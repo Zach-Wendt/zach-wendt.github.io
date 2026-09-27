@@ -32,7 +32,7 @@ import { me, experience, education, certs } from '../data';
   <h2>Certifications</h2>
   <ul class="rows">
     {certs.map((c) => (
-      <li data-say={`cert:${c.name}`}><div class="row-head"><h3>{c.name}</h3><span class="when">{c.until}</span></div></li>
+      <li data-say={`cert:${c.name}`}><div class="row-head"><h3>{c.href ? <a href={c.href}>{c.name}</a> : c.name}</h3><span class="when">{c.until}</span></div></li>
     ))}
   </ul>
 </Base>

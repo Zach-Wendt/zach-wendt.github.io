@@ -60,7 +60,7 @@ export const education = [
 ];
 
 export const certs = [
-  { name: 'CompTIA Security+ ce', until: 'active through May 2027' },
+  { name: 'CompTIA Security+ ce', until: 'active through May 2027', href: 'https://www.credly.com/users/zachary-wendt-maldonado' },
   { name: 'Microsoft Certified: Azure Developer Associate (AZ-204)', until: 'active through March 2027' },
   { name: 'Microsoft Certified: Azure Fundamentals (AZ-900)', until: '2021' },
 ];
