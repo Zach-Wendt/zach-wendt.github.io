@@ -29,7 +29,7 @@ const fmt = (d: Date) => d.toLocaleDateString('en-US', { year: 'numeric', month:
         <li data-say={`project:${p.name}`} tabindex="0">
           <div class="row-head">
             <h3>{p.href ? <a href={p.href}>{p.name}</a> : p.name}</h3>
-            {!p.href && <span class="when">Source coming soon</span>}
+            {!p.href && <span class="when">Private project</span>}
           </div>
           <p>{p.blurb}</p>
           <p class="tags">{p.tags.join(', ')}</p>
