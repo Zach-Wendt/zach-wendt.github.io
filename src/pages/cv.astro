@@ -14,7 +14,7 @@ import { me, experience, education, certs } from '../data';
       <li data-say={`job:${e.role}`}>
         <div class="row-head"><h3>{e.role}</h3><span class="when">{e.when}</span></div>
         <p class="muted">{e.org}</p>
-        <p>{e.note}</p>
+        {e.note && <p>{e.note}</p>}
       </li>
     ))}
   </ul>

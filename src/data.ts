@@ -4,7 +4,7 @@ export const me = {
   name: 'Zachary Wendt-Maldonado',
   short: 'Zach Wendt-Maldonado',
   tagline:
-    'PhD student in computer science studying multi-agent systems and game theory: how independent agents coordinate, compete, and get things built. I build agent tooling on the side. Former Marine, Navy Reserve cyber warfare technician, and Amazon S3 engineer.',
+    'PhD student in computer science studying multi-agent systems and game theory: how independent agents coordinate, compete, and get things built. I build agent tooling on the side. Navy Reservist, former Marine, and former Amazon S3 engineer.',
   email: 'Zachary.k.wendt-maldonado@outlook.com',
   orcid: '0009-0008-3413-0985',
   links: [
@@ -44,8 +44,7 @@ export const projects: Project[] = [
 ];
 
 export const experience = [
-  { role: 'Cyber Warfare Technician', org: 'U.S. Navy Reserve', when: '2024 to present',
-    note: 'Vulnerability assessment, incident response, and network defense for Navy networks.' },
+  { role: 'Reservist', org: 'U.S. Navy Reserve', when: '2024 to present', note: '' },
   { role: 'Dedicated Cloud Engineer, Amazon S3', org: 'Amazon Web Services', when: '2022 to 2026',
     note: 'Launched S3 in dedicated partitions and regions for U.S. Intelligence Community customers. Built deployment automation for 10,000+ production hosts.' },
   { role: 'Information Systems Security Officer', org: 'U.S. Marine Corps, MAWTS-1', when: '2019 to 2021',
