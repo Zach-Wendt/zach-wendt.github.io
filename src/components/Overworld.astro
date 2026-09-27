@@ -1,0 +1,349 @@
+---
+// A tiny top-down town. Visitors pick a partner monster, then walk to buildings
+// that map to sections of the site. Sprites and tiles are drawn in code.
+import '@fontsource/pixelify-sans/400.css';
+import '@fontsource/pixelify-sans/600.css';
+import { research, projects, experience } from '../data';
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('writing', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+const facts = {
+  lab: research.interests.join('. ') + '.',
+  workshop: projects.map((p) => p.name).join(', ') + '.',
+  library: posts[0] ? `Newest: "${posts[0].data.title}".` : 'The first post is still being written.',
+  hq: experience.slice(0, 3).map((e) => `${e.role}, ${e.org}`).join('. ') + '.',
+};
+const buildings = [
+  { id: 'lab', label: 'Lab', section: 'Research', href: '#research' },
+  { id: 'workshop', label: 'Workshop', section: 'Projects', href: '#projects' },
+  { id: 'library', label: 'Library', section: 'Writing', href: '/writing/' },
+  { id: 'hq', label: 'HQ', section: 'CV', href: '/cv/' },
+];
+---
+<section class="world" aria-label="Interactive tour of this site">
+  <div class="stage">
+    <canvas id="world" width="320" height="192" tabindex="0"
+      aria-label="Town map. Use arrow keys or WASD to walk, or tap a building. Walk into a door to visit that section."></canvas>
+    {buildings.map((b) => <span class="sign" data-sign={b.id}>{b.label}</span>)}
+
+    <div class="picker" id="picker" hidden>
+      <p class="box">Pick a partner. Each one knows a different way around.</p>
+      <div class="starters">
+        <button type="button" data-pick="bramblet"><canvas width="12" height="12" data-portrait="bramblet"></canvas><b>Bramblet</b><span>Stacks bricks. Heads for the Workshop.</span></button>
+        <button type="button" data-pick="lumoth"><canvas width="12" height="12" data-portrait="lumoth"></canvas><b>Lumoth</b><span>Curious moth. Heads for the Lab.</span></button>
+        <button type="button" data-pick="voltkit"><canvas width="12" height="12" data-portrait="voltkit"></canvas><b>Voltkit</b><span>Busy fox. Straight to the CV.</span></button>
+      </div>
+    </div>
+
+    <div class="dialog box" id="dialog" hidden role="dialog" aria-live="polite">
+      <canvas width="12" height="12" id="dialog-face"></canvas>
+      <div>
+        <p id="dialog-text"></p>
+        <p class="actions">
+          <a id="dialog-go" href="#">Go in</a>
+          <button type="button" id="dialog-close">Keep exploring</button>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="bar">
+    <span>Walk to:</span>
+    {buildings.map((b) => <button type="button" data-walk={b.id}>{b.label} ({b.section})</button>)}
+    <button type="button" id="repick" class="repick">Change partner</button>
+  </div>
+</section>
+
+<script type="application/json" id="world-data" set:html={JSON.stringify({ facts, buildings })}></script>
+
+<style>
+  .world { margin: 2.5rem 0 0; font-family: 'Pixelify Sans', monospace; }
+  .stage { position: relative; }
+  #world {
+    display: block; width: 100%; height: auto; image-rendering: pixelated;
+    border-radius: 8px; border: 3px solid var(--ink); outline-offset: 3px; cursor: pointer;
+  }
+  .sign {
+    position: absolute; transform: translate(-50%, -50%); pointer-events: none;
+    background: #fdf6e3; color: var(--ink); border: 2px solid var(--ink); border-radius: 3px;
+    padding: 0 0.4em; font-size: clamp(0.6rem, 1.6vw, 0.9rem); line-height: 1.4;
+  }
+  .box {
+    background: #fdf6e3; color: var(--ink); border: 3px solid var(--ink);
+    box-shadow: inset 0 0 0 3px #fdf6e3, inset 0 0 0 5px #7a8ca3; border-radius: 6px;
+    padding: 0.8rem 1rem; margin: 0; max-width: none; font-size: 1.05rem;
+  }
+  .picker {
+    position: absolute; inset: 0; display: grid; align-content: center; gap: 1rem;
+    padding: 1rem; background: rgb(22 34 46 / 0.55); border-radius: 8px;
+  }
+  .picker[hidden], .dialog[hidden] { display: none; }
+  .starters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+  .starters button {
+    display: grid; justify-items: center; gap: 0.3rem; padding: 0.75rem 0.5rem;
+    font: inherit; color: var(--ink); background: #fdf6e3; cursor: pointer;
+    border: 3px solid var(--ink); border-radius: 6px;
+  }
+  .starters button:hover { background: #fff; transform: translateY(-2px); }
+  .starters canvas { width: 56px; height: 56px; image-rendering: pixelated; }
+  .starters b { font-size: 1.1rem; }
+  .starters span { font-size: 0.85rem; line-height: 1.25; }
+  @media (max-width: 560px) {
+    .starters { grid-template-columns: 1fr; }
+    .starters button { grid-template-columns: 40px 1fr; justify-items: start; text-align: left; }
+    .starters canvas { width: 40px; height: 40px; grid-row: span 2; }
+    .picker { position: static; background: none; padding: 1rem 0 0; }
+  }
+  .dialog { position: absolute; left: 0.75rem; right: 0.75rem; bottom: 0.75rem; display: flex; gap: 0.9rem; align-items: flex-start; }
+  #dialog-face { width: 48px; height: 48px; flex: none; image-rendering: pixelated; }
+  .dialog p { margin: 0; }
+  .actions { display: flex; gap: 1.25rem; margin-top: 0.5rem !important; }
+  .actions a, .actions button { font: inherit; color: var(--blue); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 0.2em; }
+  .actions a::before, .actions button::before { content: '▸ '; text-decoration: none; display: inline-block; }
+  @media (max-width: 560px) {
+    .dialog { position: static; margin-top: 0.75rem; }
+  }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; margin-top: 0.9rem; font-size: 0.95rem; }
+  .bar button {
+    font: inherit; color: var(--ink); background: var(--paper); cursor: pointer;
+    border: 2px solid var(--ink); border-radius: 4px; padding: 0.15rem 0.6rem;
+  }
+  .bar .repick { margin-left: auto; border-color: var(--rule); color: var(--slate); }
+</style>
+
+<script>
+  import { INK, drawSprite as sprite, partners, store, type Pid, type Place as Id } from '../partners';
+  const { facts, buildings } = JSON.parse(document.getElementById('world-data')!.textContent!) as {
+    facts: Record<Id, string>; buildings: { id: Id; label: string; section: string; href: string }[];
+  };
+  const $ = (id: string) => document.getElementById(id)!;
+  const canvas = $('world') as HTMLCanvasElement;
+  const ctx = canvas.getContext('2d')!;
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const T = 16, COLS = 20, ROWS = 12;
+
+  document.querySelectorAll<HTMLCanvasElement>('[data-portrait]').forEach((c) => sprite(c.getContext('2d')!, c.dataset.portrait as Pid, 0, 0));
+
+  // ---------- Map ----------
+  const B: Record<Id, { x: number; y: number; w: number; h: number; roof: string; door: [number, number] }> = {
+    lab: { x: 2, y: 1, w: 5, h: 3, roof: '#3f8f9a', door: [4, 3] },
+    library: { x: 13, y: 1, w: 5, h: 3, roof: '#7a5a9e', door: [15, 3] },
+    workshop: { x: 2, y: 7, w: 5, h: 3, roof: '#b8603a', door: [4, 9] },
+    hq: { x: 13, y: 7, w: 5, h: 3, roof: '#2f4a6e', door: [15, 9] },
+  };
+  const ids = Object.keys(B) as Id[];
+  const tile: string[][] = Array.from({ length: ROWS }, (_, y) => Array.from({ length: COLS }, (_, x) => {
+    if (y === 0 || y === ROWS - 1 || x === 0 || x === COLS - 1) return 'T';
+    if (y === 4 || y === 6 || y === 10 || x === 1 || x === 18 || ((x === 9 || x === 10) && y > 4)) return '=';
+    return '.';
+  }));
+  for (const id of ids) {
+    const b = B[id];
+    for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) tile[y][x] = 'B';
+    tile[b.door[1]][b.door[0]] = id;
+  }
+  const walkable = (x: number, y: number) => x >= 0 && y >= 0 && x < COLS && y < ROWS && !'TBw'.includes(tile[y][x]);
+  const hash = (x: number, y: number) => ((x * 73856093) ^ (y * 19349663)) >>> 0;
+
+  const bg = document.createElement('canvas');
+  bg.width = COLS * T; bg.height = ROWS * T;
+  (function paintMap() {
+    const g = bg.getContext('2d')!;
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      const px = x * T, py = y * T, h = hash(x, y), t = tile[y][x];
+      g.fillStyle = '#8cc26a'; g.fillRect(px, py, T, T);
+      if (t === '=') {
+        g.fillStyle = '#e6cf98'; g.fillRect(px, py, T, T);
+        g.fillStyle = '#d4b97c'; g.fillRect(px + (h % 12), py + ((h >> 4) % 12), 2, 1);
+      } else if (t === '.') {
+        g.fillStyle = '#76ad56';
+        g.fillRect(px + (h % 13), py + ((h >> 3) % 13), 1, 2); g.fillRect(px + ((h >> 6) % 13) + 1, py + ((h >> 9) % 13), 1, 2);
+        if (h % 9 === 0) { g.fillStyle = h % 2 ? '#fdf6e3' : '#e8708a'; g.fillRect(px + 6, py + 6, 2, 2); }
+      } else if (t === 'w') {
+        g.fillStyle = '#5aa0d8'; g.fillRect(px + 1, py + 2, T - 2, T - 4);
+        g.fillStyle = '#9cd0f5'; g.fillRect(px + 4, py + 5, 5, 1);
+      } else if (t === 'T') { // picket fence: rails run along the edge, a post every tile
+        const side = x === 0 || x === COLS - 1;
+        g.fillStyle = INK;
+        if (side) { g.fillRect(px + 5, py, 1, T); g.fillRect(px + 10, py, 1, T); }
+        else { g.fillRect(px, py + 6, T, 1); g.fillRect(px, py + 11, T, 1); }
+        g.fillStyle = '#fdf6e3';
+        if (side) { g.fillRect(px + 4, py, 1, T); g.fillRect(px + 9, py, 1, T); }
+        else { g.fillRect(px, py + 5, T, 1); g.fillRect(px, py + 10, T, 1); }
+        g.fillStyle = INK; g.fillRect(px + 6, py + 1, 4, 13);
+        g.fillStyle = '#fdf6e3'; g.fillRect(px + 7, py + 2, 2, 11); g.fillRect(px + 7, py + 1, 2, 1);
+      }
+    }
+    for (const id of ids) {
+      const b = B[id], x = b.x * T, y = b.y * T, w = b.w * T;
+      g.fillStyle = '#fdf6e3'; g.fillRect(x + 2, y + T + 4, w - 4, b.h * T - T - 4);       // walls
+      g.fillStyle = b.roof; g.fillRect(x, y + 2, w, T + 6);                                 // roof
+      g.fillStyle = 'rgb(0 0 0 / 0.18)'; for (let i = 0; i < w; i += 4) g.fillRect(x + i, y + 2, 1, T + 6);
+      g.fillStyle = INK; g.fillRect(x, y + T + 7, w, 1);
+      g.fillStyle = '#9cd0f5'; g.fillRect(x + 6, y + T + 12, 8, 7); g.fillRect(x + w - 14, y + T + 12, 8, 7); // windows
+      const [dx, dy] = b.door; g.fillStyle = '#6b4a2e'; g.fillRect(dx * T + 3, dy * T + 2, T - 6, T - 2); // door
+      g.fillStyle = '#e0a020'; g.fillRect(dx * T + T - 6, dy * T + 9, 1, 1);
+    }
+  })();
+
+  // Signs sit on the roofs; positioned in % so they scale with the canvas.
+  document.querySelectorAll<HTMLElement>('[data-sign]').forEach((el) => {
+    const b = B[el.dataset.sign as Id];
+    el.style.left = `${((b.x + b.w / 2) / COLS) * 100}%`;
+    el.style.top = `${((b.y + 0.75) / ROWS) * 100}%`;
+  });
+
+  let partner: Pid | null = store.partner();
+  const nextStop = () => (partner ? partners[partner].route.find((p) => !store.visited().includes(p)) ?? null : null);
+
+  // ---------- Actors ----------
+  const start: [number, number] = [9, 5];
+  const player = { x: start[0], y: start[1], fx: start[0], fy: start[1], flip: false, t: 1 };
+  const pal = { x: start[0], y: start[1] + 1, fx: start[0], fy: start[1] + 1, flip: false, t: 1 };
+  const STEP = still ? 0 : 150;
+  let path: [number, number][] = [];
+  let held: [number, number] | null = null;
+  let busy = false; // dialog or picker open
+  let pending = false; // a step is in flight; check for a door when it lands
+
+  function bfs(tx: number, ty: number) {
+    const key = (x: number, y: number) => y * COLS + x;
+    const prev = new Map<number, number>([[key(player.x, player.y), -1]]);
+    const q: [number, number][] = [[player.x, player.y]];
+    while (q.length) {
+      const [x, y] = q.shift()!;
+      if (x === tx && y === ty) {
+        const out: [number, number][] = [];
+        for (let k = key(x, y); k !== key(player.x, player.y); k = prev.get(k)!) out.unshift([k % COLS, Math.floor(k / COLS)]);
+        return out;
+      }
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (walkable(nx, ny) && !prev.has(key(nx, ny))) { prev.set(key(nx, ny), key(x, y)); q.push([nx, ny]); }
+      }
+    }
+    return [];
+  }
+
+  function moveTo(nx: number, ny: number) {
+    if (!walkable(nx, ny)) return false;
+    pal.fx = pal.x; pal.fy = pal.y; pal.flip = player.x < pal.x || (player.x === pal.x && pal.flip);
+    pal.x = player.x; pal.y = player.y; pal.t = 0;
+    player.fx = player.x; player.fy = player.y; if (nx !== player.x) player.flip = nx < player.x;
+    player.x = nx; player.y = ny; player.t = 0;
+    return true;
+  }
+
+  function arrive() {
+    const t = tile[player.y][player.x] as Id;
+    if (ids.includes(t)) { path = []; held = null; openDialog(t); }
+  }
+
+  // ---------- Dialog ----------
+  let typing = 0;
+  function say(text: string, go?: { href: string; label: string }) {
+    busy = true;
+    $('dialog').hidden = false;
+    sprite(($('dialog-face') as HTMLCanvasElement).getContext('2d')!, partner ?? 'player', 0, 0);
+    const out = $('dialog-text'), link = $('dialog-go') as HTMLAnchorElement;
+    link.hidden = !go; if (go) { link.href = go.href; link.textContent = go.label; }
+    clearInterval(typing);
+    if (still) { out.textContent = text; return; }
+    let i = 0; out.textContent = '';
+    typing = window.setInterval(() => { out.textContent = text.slice(0, ++i); if (i >= text.length) clearInterval(typing); }, 18);
+  }
+  function openDialog(id: Id) {
+    const b = buildings.find((x) => x.id === id)!;
+    const line = partner ? partners[partner].places[id] : '';
+    store.visit(id);
+    const done = partner && nextStop() === null ? ` That's the whole town. I'll tag along on the rest of the site.` : '';
+    say(`${line} ${facts[id]}${done}`, { href: b.href, label: `Go in: ${b.section}` });
+  }
+  function closeDialog() {
+    clearInterval(typing);
+    $('dialog').hidden = true; busy = false;
+    const t = tile[player.y][player.x];
+    if (ids.includes(t as Id)) moveTo(player.x, player.y + 1); // step back out the door
+    canvas.focus({ preventScroll: true });
+  }
+  $('dialog-close').onclick = closeDialog;
+  $('dialog-go').addEventListener('click', () => {
+    $('dialog').hidden = true; busy = false;
+    const t = tile[player.y][player.x]; if (ids.includes(t as Id)) moveTo(player.x, player.y + 1);
+  });
+
+  // ---------- Picker ----------
+  function showPicker() { busy = true; $('picker').hidden = false; ($('picker').querySelector('button') as HTMLElement).focus({ preventScroll: true }); }
+  document.querySelectorAll<HTMLButtonElement>('[data-pick]').forEach((btn) => btn.onclick = () => {
+    partner = btn.dataset.pick as Pid;
+    store.setPartner(partner);
+    $('picker').hidden = true;
+    const p = partners[partner], first = buildings.find((b) => b.id === p.route[0])!;
+    say(`${p.name} joined you! ${p.name} wants to visit the ${first.label} first. Walk with arrow keys or WASD, or tap a building.`);
+  });
+  $('repick').onclick = () => { $('dialog').hidden = true; showPicker(); };
+
+  // ---------- Input ----------
+  const dirs: Record<string, [number, number]> = {
+    ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0],
+  };
+  canvas.addEventListener('keydown', (e) => {
+    if (busy) return;
+    const d = dirs[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+    if (d) { e.preventDefault(); held = d; path = []; }
+  });
+  canvas.addEventListener('keyup', (e) => { if (dirs[e.key.length === 1 ? e.key.toLowerCase() : e.key]) held = null; });
+  canvas.addEventListener('blur', () => (held = null));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !$('dialog').hidden) closeDialog();
+  });
+  function walkTo(id: Id) { if (busy) closeDialog(); path = bfs(...B[id].door); canvas.focus({ preventScroll: true }); }
+  canvas.addEventListener('click', (e) => {
+    if (busy) return;
+    const r = canvas.getBoundingClientRect();
+    const x = Math.floor(((e.clientX - r.left) / r.width) * COLS), y = Math.floor(((e.clientY - r.top) / r.height) * ROWS);
+    const hit = ids.find((id) => { const b = B[id]; return x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h; });
+    path = hit ? bfs(...B[hit].door) : walkable(x, y) ? bfs(x, y) : [];
+  });
+  document.querySelectorAll<HTMLButtonElement>('[data-walk]').forEach((b) => (b.onclick = () => walkTo(b.dataset.walk as Id)));
+
+  // ---------- Loop ----------
+  let last = performance.now();
+  function frame(now: number) {
+    const dt = now - last; last = now;
+    for (const a of [player, pal]) a.t = STEP ? Math.min(1, a.t + dt / STEP) : 1;
+    if (player.t >= 1 && pending) { pending = false; arrive(); }
+    if (player.t >= 1 && !busy) {
+      const next = path.shift();
+      pending = next ? moveTo(next[0], next[1]) : held ? moveTo(player.x + held[0], player.y + held[1]) : false;
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bg, 0, 0);
+    const stop = nextStop();
+    if (stop && !busy) { // bouncing marker over the next unvisited stop on the partner's route
+      const b = B[stop];
+      const bob = still ? 0 : Math.round(Math.sin(now / 250) * 2);
+      ctx.fillStyle = '#e0a020'; ctx.strokeStyle = INK;
+      const mx = (b.x + b.w / 2) * T, my = b.y * T - 2 + bob;
+      ctx.beginPath(); ctx.moveTo(mx - 4, my - 5); ctx.lineTo(mx + 4, my - 5); ctx.lineTo(mx, my); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+    const pos = (a: typeof player) => {
+      const k = a.t, hop = a.t < 1 && !still ? Math.round(Math.sin(k * Math.PI) * 2) : 0;
+      return [(a.fx + (a.x - a.fx) * k) * T + 2, (a.fy + (a.y - a.fy) * k) * T + 3 - hop];
+    };
+    const actors = partner ? [{ a: pal, s: partner }, { a: player, s: 'player' }] : [{ a: player, s: 'player' }];
+    actors.sort((p, q) => pos(p.a)[1] - pos(q.a)[1]);
+    for (const { a, s } of actors) {
+      const [x, y] = pos(a);
+      ctx.fillStyle = 'rgb(0 0 0 / 0.15)'; ctx.fillRect(x + 2, y + 11, 8, 2);
+      sprite(ctx, s, x, y, a.flip);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  if (!partner) showPicker();
+  requestAnimationFrame(frame);
+</script>

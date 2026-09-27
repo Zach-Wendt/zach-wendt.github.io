@@ -1,0 +1,163 @@
+---
+// Agents build a blueprint brick by brick. Each free agent bids its travel
+// distance on every buildable brick; lowest bid wins (a greedy auction).
+// Visitors draw new blueprint cells or knock bricks out and watch the repair.
+---
+<figure class="build">
+  <canvas id="build" width="960" height="420"
+    aria-label="Small agents carry bricks up from the bottom and assemble a structure. Drag on empty space to add to the blueprint; drag across bricks to knock them out."></canvas>
+  <figcaption>
+    <p>
+      Sixty-four agents, no foreman. Each one bids on the nearest brick it can place, the lowest bid wins, and
+      the structure goes up from the ground. Drag across empty space to add to the plan, or across bricks
+      to knock them out.
+    </p>
+    <div class="controls">
+      <button type="button" id="build-wreck">Knock it all down</button>
+      <button type="button" id="build-clear">Start from scratch</button>
+      <span class="muted" id="build-stats" aria-live="off"></span>
+    </div>
+  </figcaption>
+</figure>
+
+<style>
+  .build { margin: 2.5rem 0 0; }
+  canvas {
+    display: block; width: 100%; height: auto; touch-action: none; cursor: crosshair;
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 8px;
+  }
+  figcaption { margin-top: 1rem; }
+  figcaption p { font-size: 0.9375rem; }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1rem; font-size: 0.9375rem; }
+  button {
+    font: inherit; color: var(--ink); background: var(--paper); cursor: pointer;
+    border: 1px solid var(--rule); border-radius: 6px; padding: 0.35rem 0.8rem;
+  }
+  button:hover { border-color: var(--slate); }
+</style>
+
+<script>
+  const canvas = document.getElementById('build') as HTMLCanvasElement;
+  const ctx = canvas.getContext('2d')!;
+  const stats = document.getElementById('build-stats')!;
+  const W = canvas.width, H = canvas.height, CELL = 12;
+  const COLS = W / CELL, ROWS = Math.floor((H - 30) / CELL); // bottom strip is the supply yard
+  const YARD = H - 12;
+  const css = getComputedStyle(document.documentElement);
+  const col = (v: string) => css.getPropertyValue(v).trim();
+  const C = { ink: col('--ink'), rule: col('--rule'), blue: col('--blue'), amber: col('--amber') };
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Cell state: 0 empty, 1 planned, 2 claimed by an agent, 3 built.
+  const grid = new Uint8Array(COLS * ROWS);
+  const at = (c: number, r: number) => r * COLS + c;
+  let placed = 0;
+
+  function blueprint(text: string) {
+    const off = document.createElement('canvas');
+    off.width = COLS; off.height = ROWS;
+    const o = off.getContext('2d')!;
+    o.font = `800 ${ROWS * 0.95}px "Public Sans Variable", sans-serif`;
+    o.textAlign = 'center'; o.textBaseline = 'alphabetic';
+    o.fillText(text, COLS / 2, ROWS * 0.86);
+    const px = o.getImageData(0, 0, COLS, ROWS).data;
+    for (let i = 0; i < COLS * ROWS; i++) if (px[i * 4 + 3] > 110) grid[i] = still ? 3 : 1;
+  }
+
+  // Buildable = planned, and resting on the ground or on a brick that's built or already on its way.
+  const buildable = (c: number, r: number) =>
+    grid[at(c, r)] === 1 && (r === ROWS - 1 || grid[at(c, r + 1)] !== 1);
+
+  type Agent = { x: number; y: number; state: 'idle' | 'fetch' | 'carry'; c: number; r: number; speed: number };
+  const agents: Agent[] = Array.from({ length: 64 }, () => ({
+    x: Math.random() * W, y: YARD, state: 'idle', c: 0, r: 0, speed: 5.5 + Math.random() * 2.5,
+  }));
+
+  function auction(a: Agent) {
+    let best = -1, bestBid = Infinity;
+    for (let r = ROWS - 1; r >= 0; r--) for (let c = 0; c < COLS; c++) {
+      if (!buildable(c, r)) continue;
+      const bid = Math.abs(c * CELL - a.x) + (ROWS - r) * 2; // travel cost, slight preference for low rows
+      if (bid < bestBid) { bestBid = bid; best = at(c, r); }
+    }
+    if (best < 0) return;
+    grid[best] = 2; a.c = best % COLS; a.r = Math.floor(best / COLS); a.state = 'fetch';
+  }
+
+  function step(a: Agent, tx: number, ty: number) {
+    const dx = tx - a.x, dy = ty - a.y, d = Math.hypot(dx, dy);
+    if (d <= a.speed) { a.x = tx; a.y = ty; return true; }
+    a.x += (dx / d) * a.speed; a.y += (dy / d) * a.speed; return false;
+  }
+
+  function tick() {
+    for (const a of agents) {
+      if (a.state === 'idle') { auction(a); if (a.state === 'idle') step(a, a.x, YARD); continue; }
+      const cx = a.c * CELL + CELL / 2, cy = a.r * CELL + CELL / 2;
+      if (grid[at(a.c, a.r)] !== 2) { a.state = 'idle'; continue; } // plan changed under us
+      if (a.state === 'fetch' && step(a, cx, YARD)) a.state = 'carry';
+      else if (a.state === 'carry' && step(a, cx, cy)) { grid[at(a.c, a.r)] = 3; placed++; a.state = 'idle'; }
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = C.rule; ctx.fillRect(0, H - 22, W, 1);
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+      const s = grid[at(c, r)];
+      if (!s) continue;
+      const x = c * CELL, y = r * CELL;
+      if (s === 3) { ctx.fillStyle = C.ink; ctx.fillRect(x + 1, y + 1, CELL - 2, CELL - 2); }
+      else { ctx.strokeStyle = C.rule; ctx.lineWidth = 1; ctx.strokeRect(x + 1.5, y + 1.5, CELL - 3, CELL - 3); }
+    }
+    for (const a of agents) {
+      ctx.fillStyle = C.blue; ctx.beginPath(); ctx.arc(a.x, a.y, 4, 0, Math.PI * 2); ctx.fill();
+      if (a.state === 'carry') { ctx.fillStyle = C.amber; ctx.fillRect(a.x - 4, a.y - 12, 8, 7); }
+    }
+    const left = grid.reduce((n, s) => n + (s === 1 || s === 2 ? 1 : 0), 0);
+    stats.textContent = left ? `${placed} bricks placed, ${left} to go` : `${placed} bricks placed. Done. Try knocking some out.`;
+  }
+
+  // Pointer: a drag that starts on a brick knocks bricks out (they stay planned, so agents rebuild);
+  // a drag that starts on empty space draws new plan.
+  let mode: 'knock' | 'draw' | null = null;
+  function cellAt(e: PointerEvent) {
+    const b = canvas.getBoundingClientRect();
+    const c = Math.floor(((e.clientX - b.left) / b.width) * W / CELL);
+    const r = Math.floor(((e.clientY - b.top) / b.height) * H / CELL);
+    return c >= 0 && c < COLS && r >= 0 && r < ROWS ? at(c, r) : -1;
+  }
+  function paint(e: PointerEvent) {
+    const i = cellAt(e);
+    if (i < 0) return;
+    for (const j of [i, i + 1, i + COLS, i + COLS + 1]) { // 2x2 brush
+      if (j >= grid.length || (j % COLS === 0 && j !== i && j !== i + COLS)) continue;
+      if (mode === 'knock' && grid[j] === 3) grid[j] = 1;
+      if (mode === 'draw' && grid[j] === 0) grid[j] = still ? 3 : 1;
+    }
+    if (still) draw();
+  }
+  canvas.addEventListener('pointerdown', (e) => {
+    const i = cellAt(e);
+    mode = i >= 0 && grid[i] === 3 ? 'knock' : 'draw';
+    canvas.setPointerCapture(e.pointerId); paint(e);
+  });
+  canvas.addEventListener('pointermove', (e) => mode && paint(e));
+  canvas.addEventListener('pointerup', () => (mode = null));
+
+  document.getElementById('build-wreck')!.onclick = () => {
+    grid.forEach((s, i) => { if (s >= 2) grid[i] = still ? 3 : 1; });
+    agents.forEach((a) => (a.state = 'idle'));
+    if (still) draw();
+  };
+  document.getElementById('build-clear')!.onclick = () => {
+    grid.fill(0); agents.forEach((a) => (a.state = 'idle')); draw();
+  };
+
+  document.fonts.load('800 32px "Public Sans Variable"').then(() => {
+    blueprint('Zach');
+    if (still) { draw(); return; }
+    const loop = () => { tick(); draw(); requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  });
+</script>

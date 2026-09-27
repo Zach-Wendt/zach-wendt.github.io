@@ -1,0 +1,110 @@
+---
+import '@fontsource-variable/public-sans';
+import { me } from '../data';
+import Companion from '../components/Companion.astro';
+
+interface Props { title?: string; description?: string }
+const { title, description = me.tagline } = Astro.props;
+const fullTitle = title ? `${title} | ${me.short}` : me.name;
+const path = Astro.url.pathname;
+const nav = [
+  { href: '/', label: 'Home' },
+  { href: '/writing/', label: 'Writing' },
+  { href: '/cv/', label: 'CV' },
+];
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="wordmark" href="/">{me.short}</a>
+      <nav aria-label="Main">
+        {nav.map((n) => (
+          <a href={n.href} aria-current={(n.href === '/' ? path === '/' : path.startsWith(n.href)) ? 'page' : undefined}>{n.label}</a>
+        ))}
+      </nav>
+    </header>
+    <main><slot /></main>
+    <footer class="site-footer">
+      <a href={`mailto:${me.email}`}>Email</a>
+      {me.links.map((l) => <a href={l.href}>{l.label}</a>)}
+    </footer>
+    <Companion />
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --fog: #e8ecef;
+    --paper: #f6f8f9;
+    --ink: #16222e;
+    --slate: #52627a;
+    --rule: #c9d2db;
+    --blue: #1f4e8c;
+    --amber: #b87400;
+    --measure: 66ch;
+    font-family: 'Public Sans Variable', system-ui, sans-serif;
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    color: var(--ink);
+    background: var(--fog);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  main, .site-header, .site-footer {
+    max-width: calc(var(--measure) + 4rem);
+    margin-inline: auto;
+    padding-inline: 2rem;
+  }
+  @media (max-width: 560px) {
+    main, .site-header, .site-footer { padding-inline: 1.25rem; }
+  }
+  h1, h2, h3 { line-height: 1.15; letter-spacing: -0.015em; }
+  h1 { font-size: clamp(2.25rem, 6vw, 3.5rem); font-weight: 800; margin: 0 0 1rem; letter-spacing: -0.03em; }
+  h2 { font-size: 1.5rem; font-weight: 700; margin: 3.5rem 0 1rem; }
+  h3 { font-size: 1.0625rem; font-weight: 650; margin: 0; }
+  p { margin: 0 0 1rem; max-width: var(--measure); }
+  a { color: var(--blue); text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
+  a:hover { text-decoration-thickness: 2px; }
+  :focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; border-radius: 2px; }
+  .muted { color: var(--slate); }
+
+  .site-header {
+    display: flex; flex-wrap: wrap; gap: 1rem 2rem;
+    justify-content: space-between; align-items: baseline;
+    padding-block: 1.5rem;
+  }
+  .wordmark { font-weight: 750; color: var(--ink); text-decoration: none; }
+  .site-header nav { display: flex; gap: 1.5rem; }
+  .site-header nav a { color: var(--slate); text-decoration: none; }
+  .site-header nav a[aria-current='page'] { color: var(--ink); font-weight: 650; }
+  .site-footer {
+    display: flex; flex-wrap: wrap; gap: 1.5rem;
+    padding-block: 3rem; margin-top: 4rem; border-top: 1px solid var(--rule);
+  }
+
+  /* Lists of dated or tagged items share one row layout. */
+  .rows { list-style: none; padding: 0; margin: 0; }
+  .rows > li { padding-block: 1rem; border-top: 1px solid var(--rule); }
+  .rows > li:last-child { border-bottom: 1px solid var(--rule); }
+  .row-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 1rem; }
+  .row-head .when { color: var(--slate); font-variant-numeric: tabular-nums; }
+  .rows p { margin: 0.25rem 0 0; }
+  .tags { color: var(--slate); font-size: 0.9375rem; }
+
+  .prose h2 { font-size: 1.3rem; margin-top: 2.5rem; }
+  .prose li { max-width: var(--measure); margin-bottom: 0.4rem; }
+  .prose blockquote { margin: 1.5rem 0; padding-left: 1.25rem; border-left: 3px solid var(--blue); color: var(--slate); }
+  .prose pre { background: var(--ink); color: var(--paper); padding: 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.9rem; }
+</style>

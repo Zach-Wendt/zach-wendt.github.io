@@ -1,0 +1,23 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('writing', ({ data }) => import.meta.env.DEV || !data.draft))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+const fmt = (d: Date) => d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+---
+<Base title="Writing" description="Notes on multi-agent systems, game theory, and security.">
+  <h1>Writing</h1>
+  <p class="muted">Notes on multi-agent systems, game theory, and security.</p>
+  <ul class="rows">
+    {posts.map((p) => (
+      <li data-say={`post:${p.data.title}`}>
+        <div class="row-head">
+          <h3><a href={`/writing/${p.id}/`}>{p.data.title}</a>{p.data.draft && ' (draft)'}</h3>
+          <span class="when">{fmt(p.data.date)}</span>
+        </div>
+        <p>{p.data.summary}</p>
+      </li>
+    ))}
+  </ul>
+</Base>

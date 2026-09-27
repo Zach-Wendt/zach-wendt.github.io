@@ -1,0 +1,132 @@
+---
+// The visitor's partner monster, living in a corner pane on every page.
+// Hover or focus anything marked data-say="kind:name" and it hops over to comment.
+---
+<div class="companion" id="companion" hidden>
+  <div class="pane">
+    <button type="button" class="hide" id="companion-hide" aria-label="Hide partner">×</button>
+  </div>
+  <div class="mon" id="companion-mon"><canvas width="12" height="12" id="companion-face"></canvas></div>
+  <p class="bubble" id="companion-bubble" role="status" hidden></p>
+</div>
+<button type="button" class="call" id="companion-call" hidden></button>
+
+<style>
+  .companion[hidden], .call[hidden], .bubble[hidden] { display: none; }
+  .pane {
+    position: fixed; right: 1rem; bottom: 1rem; width: 68px; height: 68px; z-index: 40;
+    background: #fdf6e3; border: 3px solid var(--ink); border-radius: 8px;
+    box-shadow: inset 0 0 0 2px #fdf6e3, inset 0 0 0 4px #7a8ca3;
+  }
+  .hide {
+    position: absolute; top: -12px; right: -12px; width: 22px; height: 22px; padding: 0;
+    font: 700 14px/1 system-ui; color: var(--ink); background: #fdf6e3; cursor: pointer;
+    border: 2px solid var(--ink); border-radius: 50%;
+  }
+  .mon {
+    position: fixed; left: 0; top: 0; width: 48px; height: 48px; z-index: 41; pointer-events: none;
+    transition: transform 0.45s cubic-bezier(0.3, 1.4, 0.5, 1);
+  }
+  .mon canvas { width: 100%; height: 100%; image-rendering: pixelated; }
+  .mon.hop canvas { animation: hop 0.45s ease-out; }
+  @keyframes hop { 40% { transform: translateY(-14px); } }
+  .bubble {
+    position: fixed; left: 0; top: 0; z-index: 42; margin: 0; max-width: 17rem;
+    font: 0.95rem/1.35 'Pixelify Sans', monospace; color: var(--ink);
+    background: #fdf6e3; border: 3px solid var(--ink); border-radius: 6px; padding: 0.45rem 0.7rem;
+  }
+  .call {
+    position: fixed; right: 1rem; bottom: 1rem; z-index: 40;
+    font: 0.9rem 'Pixelify Sans', monospace; color: var(--ink); background: #fdf6e3; cursor: pointer;
+    border: 2px solid var(--ink); border-radius: 4px; padding: 0.2rem 0.6rem;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .mon { transition: none; }
+    .mon.hop canvas { animation: none; }
+  }
+</style>
+
+<script>
+  import '@fontsource/pixelify-sans/400.css';
+  import { drawSprite, partners, store, type Kind } from '../partners';
+
+  const $ = (id: string) => document.getElementById(id)!;
+  const root = $('companion'), mon = $('companion-mon'), bubble = $('companion-bubble'), call = $('companion-call');
+  const face = ($('companion-face') as HTMLCanvasElement).getContext('2d')!;
+  const pane = root.querySelector('.pane')!;
+  const world = document.querySelector('.world'); // the town on the homepage; partner lives there while it's on screen
+  let worldVisible = false;
+  let target: HTMLElement | null = null;
+  let leaveTimer = 0;
+
+  function render() {
+    const p = store.partner();
+    const inTown = worldVisible;
+    root.hidden = !p || store.hidden() || inTown;
+    call.hidden = !p || !store.hidden();
+    if (!p) return;
+    call.textContent = `Call ${partners[p].name}`;
+    face.clearRect(0, 0, 12, 12);
+    drawSprite(face, p, 0, 0);
+    place();
+  }
+
+  // Stand on the top edge of the hovered item, near its right end; otherwise sit in the pane.
+  function place() {
+    let x: number, y: number;
+    if (target) {
+      const r = target.getBoundingClientRect();
+      x = Math.min(r.right - 56, innerWidth - 60);
+      y = Math.max(8, r.top - 44);
+    } else {
+      const r = pane.getBoundingClientRect();
+      x = r.left + (r.width - 48) / 2; y = r.top + (r.height - 48) / 2;
+    }
+    mon.style.transform = `translate(${x}px, ${y}px)`;
+    if (!bubble.hidden) {
+      const bw = bubble.offsetWidth, bh = bubble.offsetHeight;
+      const bx = Math.max(8, x - bw - 6);
+      bubble.style.transform = `translate(${bx}px, ${Math.max(8, y - bh + 20)}px)`;
+    }
+  }
+
+  function goTo(el: HTMLElement | null) {
+    if (el === target) return;
+    target = el;
+    mon.classList.remove('hop'); void mon.offsetWidth; mon.classList.add('hop');
+    const p = store.partner();
+    if (el && p) {
+      const [kind, ...rest] = el.dataset.say!.split(':');
+      bubble.textContent = partners[p].about[kind as Kind].replace('{name}', rest.join(':'));
+      bubble.hidden = false;
+    } else bubble.hidden = true;
+    place();
+  }
+
+  const sayable = (e: Event) => (e.target as Element).closest?.('[data-say]') as HTMLElement | null;
+  const enter = (e: Event) => { const el = sayable(e); if (el && !root.hidden) { clearTimeout(leaveTimer); goTo(el); } };
+  const leave = (e: Event) => {
+    if (!sayable(e)) return;
+    clearTimeout(leaveTimer);
+    leaveTimer = window.setTimeout(() => goTo(null), 1400);
+  };
+  document.addEventListener('pointerover', enter);
+  document.addEventListener('focusin', enter);
+  document.addEventListener('pointerout', leave);
+  document.addEventListener('focusout', leave);
+  addEventListener('scroll', () => target && requestAnimationFrame(place), { passive: true });
+  addEventListener('resize', () => requestAnimationFrame(place));
+
+  $('companion-hide').onclick = () => { store.setHidden(true); goTo(null); render(); };
+  call.onclick = () => { store.setHidden(false); render(); };
+  addEventListener('partner-change', render);
+  addEventListener('storage', render);
+
+  if (world) {
+    new IntersectionObserver(([e]) => { worldVisible = e.isIntersecting; if (worldVisible) goTo(null); render(); },
+      { threshold: 0.25 }).observe(world);
+  }
+  mon.style.transition = 'none'; // first placement shouldn't fly in from the corner
+  render();
+  requestAnimationFrame(() => requestAnimationFrame(() => (mon.style.transition = '')));
+</script>

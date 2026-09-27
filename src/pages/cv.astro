@@ -1,0 +1,38 @@
+---
+import Base from '../layouts/Base.astro';
+import { me, experience, education, certs } from '../data';
+---
+<Base title="CV" description={`Experience, education, and certifications of ${me.name}.`}>
+  <h1>CV</h1>
+  <p class="muted">
+    ORCID <a href={`https://orcid.org/${me.orcid}`}>{me.orcid}</a>. Full resume available on request by <a href={`mailto:${me.email}`}>email</a>.
+  </p>
+
+  <h2>Experience</h2>
+  <ul class="rows">
+    {experience.map((e) => (
+      <li data-say={`job:${e.role}`}>
+        <div class="row-head"><h3>{e.role}</h3><span class="when">{e.when}</span></div>
+        <p class="muted">{e.org}</p>
+        <p>{e.note}</p>
+      </li>
+    ))}
+  </ul>
+
+  <h2>Education</h2>
+  <ul class="rows">
+    {education.map((e) => (
+      <li data-say={`school:${e.degree}`}>
+        <div class="row-head"><h3>{e.degree}</h3><span class="when">{e.when}</span></div>
+        <p class="muted">{e.school}</p>
+      </li>
+    ))}
+  </ul>
+
+  <h2>Certifications</h2>
+  <ul class="rows">
+    {certs.map((c) => (
+      <li data-say={`cert:${c.name}`}><div class="row-head"><h3>{c.name}</h3><span class="when">{c.until}</span></div></li>
+    ))}
+  </ul>
+</Base>

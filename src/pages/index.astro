@@ -1,0 +1,61 @@
+---
+import Base from '../layouts/Base.astro';
+import Overworld from '../components/Overworld.astro';
+import { getCollection } from 'astro:content';
+import { me, research, projects } from '../data';
+
+const posts = (await getCollection('writing', ({ data }) => import.meta.env.DEV || !data.draft))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+  .slice(0, 5);
+const fmt = (d: Date) => d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+---
+<Base>
+  <section>
+    <h1>{me.name.replace('-', '‑')}</h1>
+    <p class="lede">{me.tagline}</p>
+    <Overworld />
+  </section>
+
+  <section id="research">
+    <h2>Research</h2>
+    <p>{research.summary}</p>
+    <ul>{research.interests.map((i) => <li>{i}</li>)}</ul>
+  </section>
+
+  <section id="projects">
+    <h2>Projects</h2>
+    <ul class="rows">
+      {projects.map((p) => (
+        <li data-say={`project:${p.name}`} tabindex="0">
+          <div class="row-head">
+            <h3>{p.href ? <a href={p.href}>{p.name}</a> : p.name}</h3>
+            {!p.href && <span class="when">Source coming soon</span>}
+          </div>
+          <p>{p.blurb}</p>
+          <p class="tags">{p.tags.join(', ')}</p>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section>
+    <h2>Writing</h2>
+    {posts.length === 0 ? <p class="muted">First post is on the way.</p> : (
+      <ul class="rows">
+        {posts.map((p) => (
+          <li data-say={`post:${p.data.title}`}>
+            <div class="row-head">
+              <h3><a href={`/writing/${p.id}/`}>{p.data.title}</a>{p.data.draft && ' (draft)'}</h3>
+              <span class="when">{fmt(p.data.date)}</span>
+            </div>
+            <p>{p.data.summary}</p>
+          </li>
+        ))}
+      </ul>
+    )}
+  </section>
+</Base>
+
+<style>
+  .lede { font-size: 1.1875rem; color: var(--slate); }
+</style>
