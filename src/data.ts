@@ -46,7 +46,7 @@ export const projects: Project[] = [
 export const experience = [
   { role: 'Reservist', org: 'U.S. Navy Reserve', when: '2024 to present', note: '' },
   { role: 'Dedicated Cloud Engineer, Amazon S3', org: 'Amazon Web Services', when: '2022 to 2026',
-    note: 'Launched S3 in dedicated partitions and regions for U.S. Intelligence Community customers. Built deployment automation for 10,000+ production hosts.' },
+    note: 'Launched S3 in dedicated partitions and regions for U.S. Intelligence Community customers. Built deployment and patching automation for the S3 fleet in those regions.' },
   { role: 'Information Systems Security Officer', org: 'U.S. Marine Corps, MAWTS-1', when: '2019 to 2021',
     note: 'Owned security posture for 80+ assets across two programs of record.' },
   { role: 'Special Security Communications Team Chief', org: 'U.S. Marine Corps, 3rd Marine Division', when: '2017 to 2019',
