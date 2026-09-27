@@ -11,7 +11,7 @@ export const me = {
     { label: 'GitHub', href: 'https://github.com/zach-wendt' },
     { label: 'LinkedIn', href: 'https://www.linkedin.com/in/zacharywendt-maldonado' },
     { label: 'Hugging Face', href: 'https://huggingface.co/zach-wendt' },
-    { label: 'Bluesky', href: 'https://bsky.app/profile/zach-wendt.bsky.social' },
+    { label: 'Bluesky', href: 'https://bsky.app/profile/zach-wendt.github.io' },
     { label: 'ORCID', href: 'https://orcid.org/0009-0008-3413-0985' },
   ],
 };
